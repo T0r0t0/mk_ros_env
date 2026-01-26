@@ -19,7 +19,6 @@ This project is here to simplify the set up of an isolated ros evironment in con
 
 ## Usage
 
-
 This script create the Dockerfile, thdocker-compose.yaml, the .env file.
 
 By default it create a ROS Humble container with a folder /ros_ws
@@ -37,11 +36,17 @@ You can specify a folder to copy in it:
 You can specify the name of the image
 
 ```bash
-./mk_ros_env --name my_ros_docker
+./mk_ros_env.py --name my_ros_docker
+```
+
+To add all dependencies for gazebo add the tags ```-g```
+
+```
+./mk_ros_env.py -g
 ```
 
 And you can see more about with:
 
 ```bash
-./mk_ros_env --help
+./mk_ros_env.py --help
 ```
