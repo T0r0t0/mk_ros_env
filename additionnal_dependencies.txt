@@ -1,0 +1,10 @@
+#All additionnal dependencies
+
+#APT example (When you start to list apt dependencies you need a previous line containing #APT. If you dans add it before this can be added to pip installation
+nano
+xterm
+git
+tree
+
+#PIP example (When you start to list pip dependencies you need a previous line containing #PIP. If you dans add it before this can be added to apt installation) 
+rosdistro
