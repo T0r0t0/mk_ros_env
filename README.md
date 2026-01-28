@@ -19,34 +19,45 @@ This project is here to simplify the set up of an isolated ros evironment in con
 
 ## Usage
 
-This script create the Dockerfile, thdocker-compose.yaml, the .env file.
+### Commands
+
+- create
+- delete
+- build
+- start
+- stop
+- kill
+
+### Create examples
+
+This script create the Dockerfile, the docker-compose.yaml, the .env file.
 
 By default it create a ROS Humble container with a folder /ros_ws
 
 ```bash
-./mk_ros_env.py
+./mk_ros_env.py create
 ```
 
 You can specify a folder to copy in it:
 
 ```bash
-./mk_ros_env.py --path ./path/to/your/folder/
+./mk_ros_env.py create --path ./path/to/your/folder/
 ```
 
 You can specify the name of the image
 
 ```bash
-./mk_ros_env.py --name my_ros_docker
+./mk_ros_env.py create --name my_ros_docker
 ```
 
 To add all dependencies for gazebo add the tags ```-g```
 
 ```
-./mk_ros_env.py -g
+./mk_ros_env.py create -g
 ```
 
 And you can see more about with:
 
 ```bash
-./mk_ros_env.py --help
+./mk_ros_env.py create --help
 ```
