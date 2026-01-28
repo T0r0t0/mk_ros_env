@@ -64,10 +64,16 @@ class docker_tools:
             return False
 
     def attachTerminal(name) -> bool:
+        executeSubProcess("xhost +") # Allow GUI interface from docker to be displayed
+
         process = subprocess.Popen(f"docker exec -it {name} bash",shell=True,stdin=sys.stdin.fileno(), stdout=sys.stdout.fileno(), stderr=sys.stderr.fileno())
         # Wait for the process to complete
-        if process.wait() == 0: return True
-        else: return False
+        if process.wait() == 0: 
+            executeSubProcess("xhost -") # Disable GUI interface from docker to be displayed
+            return True
+        else:
+            executeSubProcess("xhost -") # Allow GUI interface from docker to be displayed
+            return False
     
     
 def executeSubProcess(shell: str) -> int:

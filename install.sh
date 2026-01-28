@@ -17,7 +17,7 @@ echo "Check if docker installed ... "
 
 if !command -v docker &> /dev/null; then
     echo "Docker not found"
-    echo "Installing docker ..."
+    echo "Installing docker. This may take a few minutes..."
     # Add Docker's official GPG key:
     sudo apt update
     sudo apt install ca-certificates curl

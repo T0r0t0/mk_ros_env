@@ -39,20 +39,20 @@ class docker_generator():
             response.raise_for_status()  # Raise an error for bad status codes
             data = yaml.safe_load(response.text)
 
-            print("List of ROS versions:")
-            for distro in sorted(data["distributions"]):
-                print(distro, end="/")
-            print('\n')
         except requests.RequestException as e:
             print(f"Error fetching ROS versions: {e}")
         except yaml.YAMLError as e:
-            print(f"Error parsing YAML: {e}")
+            print(f"Error parsing ROS YAML: {e}")
         
-        print("ROS version checked!")
                 
         if not self.ros_version in data["distributions"]:
             raise NameError(f"{self.ros_version} distro is not supported")
+        # Get the type of the distro
+        self.ros_type = "ros2" if data['distributions'][self.ros_version]['distribution_type'] == "ros2" else "ros"
+        print(f"Distribution info :\n\tName: {self.ros_version}\n\tType: {self.ros_type}")
+
         
+        print("ROS version checked!")
         # Check volumes
         if self.isShared and not self.isVolumes:
                 print("Shared parameters is True but no Volumes path was given. A default folder will be created and shared.")
@@ -142,11 +142,12 @@ class docker_generator():
                     Dockerfile.write(f"\\ \n\t{addDep}")
 
             if self.isGazebo: # Need to add until we have sudo permision in the docker
-                Dockerfile.write("\n# Installing Dynamic World Generator for Gazebo world generation\n")
-                Dockerfile.write("RUN cd / && sudo git clone https://github.com/ali-pahlevani/Dynamic_World_Generator.git \n")
-                Dockerfile.write("RUN pip3 install PyQt5 lxml\n")
-                Dockerfile.write("# Remove .py extension to simplify the use\n")
-                Dockerfile.write("RUN sudo mv /Dynamic_World_Generator/code/dwg_wizard.py /Dynamic_World_Generator/code/dwg_wizard\n")
+                if self.ros_type == "ros2":
+                    Dockerfile.write("\n# Installing Dynamic World Generator for Gazebo world generation\n")
+                    Dockerfile.write("RUN cd / && sudo git clone https://github.com/ali-pahlevani/Dynamic_World_Generator.git \n")
+                    Dockerfile.write("RUN pip3 install PyQt5 lxml\n")
+                    Dockerfile.write("# Remove .py extension to simplify the use\n")
+                    Dockerfile.write("RUN sudo mv /Dynamic_World_Generator/code/dwg_wizard.py /Dynamic_World_Generator/code/dwg_wizard\n")
             
             
             Dockerfile.write("\n# Setting up the user of the docker\n")
@@ -163,21 +164,21 @@ class docker_generator():
             Dockerfile.write("RUN usermod -a -G video $USER\n")
             Dockerfile.write("USER $USER\n")
 
-            if self.isGazebo:
-                Dockerfile.write("# Add the source command to .bashrc\n")
-                Dockerfile.write("RUN echo 'export PATH=$PATH:/Dynamic_World_Generator/code/' >> /home/${USER}/.bashrc\n")
+            if self.isGazebo and self.ros_type == "ros2":
+                    Dockerfile.write("# Add the source command to .bashrc\n")
+                    Dockerfile.write("RUN echo 'export PATH=$PATH:/Dynamic_World_Generator/code/' >> /home/${USER}/.bashrc\n")
 
             Dockerfile.write("\n# Add the source command to .bashrc\n")
-            Dockerfile.write("RUN echo 'source /opt/ros/humble/setup.sh' >> /home/${USER}/.bashrc\n")
+            Dockerfile.write(f"RUN echo 'source /opt/ros/{self.ros_version}"+"/setup.sh' >> /home/${USER}/.bashrc\n")
             
             if self.isVolumes:
                 Dockerfile.write("\n# Copy your workspace into the container\n")
-                Dockerfile.write(f"COPY {self.volumes_path} /ros2_ws\n")
+                Dockerfile.write(f"COPY {self.volumes_path} /{self.ros_type}_ws\n")
             else:
                 Dockerfile.write("\n# Create your workspace into the container\n")
-                Dockerfile.write(f"RUN mkdir /ros2_ws\n")
+                Dockerfile.write(f"RUN mkdir /{self.ros_type}_ws\n")
 
-            Dockerfile.write("WORKDIR /ros2_ws\n")
+            Dockerfile.write(f"WORKDIR /{self.ros_type}_ws\n")
 
     def generate_env_file(self) -> None:
         """
@@ -235,18 +236,22 @@ class docker_generator():
     
             
     def getRosDep(self) -> str:
-        return [f"ros-{self.ros_version}-ros2-control",
-        f"ros-{self.ros_version}-ros2-controllers",
+        return [f"ros-{self.ros_version}-{self.ros_type}-control",
+        f"ros-{self.ros_version}-{self.ros_type}-controllers",
         f"ros-{self.ros_version}-joint-state-publisher",
         f"ros-{self.ros_version}-diagnostic-updater",
         f"ros-{self.ros_version}-pcl-ros",
         f"ros-{self.ros_version}-xacro"]
     
     def getGazeboDep(self) -> str:
-        return [f"ros-{self.ros_version}-ros-gz-sim",
-        f"ros-{self.ros_version}-gz-ros2-control",
-        f"ros-{self.ros_version}-ros-gz-bridge",
-        f"ros-{self.ros_version}-ros-gz-image"]
+        if self.ros_type == "ros2":
+            return [f"ros-{self.ros_version}-ros-gz-sim",
+            f"ros-{self.ros_version}-gz-ros2-control",
+            f"ros-{self.ros_version}-ros-gz-bridge",
+            f"ros-{self.ros_version}-ros-gz-image"]
+        else:
+            return ["ros-noetic-gazebo-ros-pkgs", 
+                    "ros-noetic-gazebo-ros-control"]
     
     def parseDependenciesString(self, str_dep:str):
         apt_dep = []
@@ -292,7 +297,7 @@ class docker_generator():
         return res
 
 
-def isTXT(path) -> bool:
+def isTXT(path: pathlib.Path) -> bool:
 
     if not path.is_file():
         raise FileExistsError(f"This path {path} doesn't not exist. Please enter a path to .txt file.")
