@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 
+import subprocess
 import argparse
 import os
-from docker_generator import docker_generator
 import sys
+from docker_generator import docker_generator
+from docker_tools import docker_tools
+
+name = "ros-humble"
 
 parser = argparse.ArgumentParser(description="This script generate an isolate environment for your ros application. It use container with Docker framework.")
 
@@ -57,23 +61,66 @@ if __name__=="__main__":
             os.remove("./.env")
             print("\t.env deleted.")
 
-        print("Deleting docker container ...")
-            # TODO: fetch name of the containers and run docker stop <contianers_name> and run docker rm <containers_name>
-        print("Container deleted.")
-        print("Deleting images ...")
-            # TODO: fetch name of the image and run docker rmi <image_name>
-        print("Images deleted.")
+
+        print("Deleting docker container :")
+        if docker_tools.isRunning(name):
+            if docker_tools.stop(name) and docker_tools.rm(name):
+                print("Isolate environment killed.")
+        elif docker_tools.exist(name):
+            if docker_tools.rm(name):
+                print("Isolate environment killed.")
+
+        print("Deleting images:")
+        docker_tools.rmi(name)
         print("Delete completed !")
 
     elif args.command == "build":
-        # TODO: run docker compose build
-        print("not emplemented yet.")
+        docker_tools.build()
+
     elif args.command == "start":
-        # TODO: if never start: docker compose up -d else: docker start and open the bash terminal (without forgetting xhost +)
-        print("not emplemented yet.")
+        # if never start: docker compose up -d else: docker start and open the bash terminal (without forgetting xhost +)
+
+        if docker_tools.isRunning(name): # If is already running
+            print("Already start ! ")
+
+        elif docker_tools.exist(name):
+            print("Already exist so start it")
+            docker_tools.start(name)
+
+        else: # Does not exist so we create it 
+            print("Doesn't exist ! Creation ...")
+            process = subprocess.Popen("docker compose up -d", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+            # Read the output in real-time
+            for line in process.stdout:
+                print(line.strip())
+            return_code = process.wait()
+
+        #Connect the terminal stream to the docker
+        print("Connection to isolate environment ...")
+        docker_tools.attachTerminal(name)
+        print("Exit of the isolate environment.\nHave a nice day ! ;)")
+
     elif args.command == "stop":
-        # TODO: docker stop
-        print("not emplemented yet.")
+        name="my_dock"
+        if docker_tools.isRunning(name): # If is already running
+            docker_tools.stop(name)
+        else:
+            print("Already stopped or maybe doesn't exist.")
+
     elif args.command == "kill":
-        # TODO: docker stop and docker rm
-        print("not emplemented yet.")
+        # docker stop and docker rm
+
+        if docker_tools.isRunning(name):
+            if docker_tools.stop(name) and docker_tools.rm(name):
+                print("Isolate environment killed.")
+        elif docker_tools.exist(name):
+            if docker_tools.rm(name):
+                print("Isolate environment killed.")
+        else:
+            print("Isolate environment already killed or has never existed.")
+
+
+
+
+
