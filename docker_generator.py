@@ -68,7 +68,7 @@ class docker_generator():
                         i+=1
                         continue
         elif self.isVolumes:
-            self.volumes_path = volumes_path
+            self.volumes_path = pathlib.Path(volumes_path)
 
         # Check environment
         if self.isEnv:
