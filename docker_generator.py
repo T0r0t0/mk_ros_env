@@ -6,7 +6,7 @@ import os
 
 
 class docker_generator():
-    def __init__(self, name:str ,isGazebo:bool, volumes_path_list: list[str], isShared:bool, env_path, dependencies_path, ros_version: str):
+    def __init__(self, name:str ,isGazebo:bool, volumes_path_list: list[str], isShared:bool, env_path, dependencies_path, ros_distro: str):
         """
             This classe generate all necessary for a ros environment in a container.
     
@@ -18,11 +18,11 @@ class docker_generator():
         :type isShared: bool
         :param env_path: The path to a .txt file which contain all additionnal envrionment variable you want to set up.
         :param dependencies_path: The path to a .txt file which contain all additionnal dependencies you want to set up.
-        :param ros_version: The version of the ros distro ex: humble, galactic, melodic, noetic
-        :type ros_version: str
+        :param ros_distro: The version of the ros distro ex: humble, galactic, melodic, noetic
+        :type ros_distro: str
         """
-        self.ros_version=ros_version if ros_version!=None else "humble"
-        self.name=name if name!=None else "ros-"+self.ros_version
+        self.ros_distro=ros_distro if ros_distro!=None else "humble"
+        self.name=name if name!=None else "ros-"+self.ros_distro
         self.isGazebo=isGazebo
         self.isShared=isShared
 
@@ -45,11 +45,11 @@ class docker_generator():
             print(f"Error parsing ROS YAML: {e}")
         
                 
-        if not self.ros_version in data["distributions"]:
-            raise NameError(f"{self.ros_version} distro is not supported")
+        if not self.ros_distro in data["distributions"]:
+            raise NameError(f"{self.ros_distro} distro is not supported")
         # Get the type of the distro
-        self.ros_type = "ros2" if data['distributions'][self.ros_version]['distribution_type'] == "ros2" else "ros"
-        print(f"Distribution info :\n\tName: {self.ros_version}\n\tType: {self.ros_type}")
+        self.ros_type = "ros2" if data['distributions'][self.ros_distro]['distribution_type'] == "ros2" else "ros"
+        print(f"Distribution info :\n\tName: {self.ros_distro}\n\tType: {self.ros_type}")
 
         
         print("ROS version checked!")
@@ -112,7 +112,7 @@ class docker_generator():
     def generate_Dockerfile(self) -> None:
         with open("Dockerfile", mode="w") as Dockerfile:
             # Setting the based image
-            Dockerfile.write(f"FROM osrf/ros:{self.ros_version}-desktop \n")
+            Dockerfile.write(f"FROM osrf/ros:{self.ros_distro}-desktop \n")
 
             # Download all dependencies
             Dockerfile.write("RUN apt-get update && apt-get install -y \\ \n")
@@ -165,7 +165,7 @@ class docker_generator():
             Dockerfile.write("USER $USER\n")
 
             Dockerfile.write("\n# Add the source command to .bashrc\n")
-            Dockerfile.write(f"RUN echo 'source /opt/ros/{self.ros_version}"+"/setup.sh' >> /home/${USER}/.bashrc\n")
+            Dockerfile.write(f"RUN echo 'source /opt/ros/{self.ros_distro}"+"/setup.sh' >> /home/${USER}/.bashrc\n")
 
             if self.isGazebo and self.ros_type == "ros2":
                     Dockerfile.write("RUN echo 'export PATH=$PATH:/Dynamic_World_Generator/code/' >> /home/${USER}/.bashrc\n")
@@ -243,19 +243,19 @@ class docker_generator():
     
             
     def getRosDep(self) -> str:
-        return [f"ros-{self.ros_version}-{self.ros_type}-control",
-        f"ros-{self.ros_version}-{self.ros_type}-controllers",
-        f"ros-{self.ros_version}-joint-state-publisher",
-        f"ros-{self.ros_version}-diagnostic-updater",
-        f"ros-{self.ros_version}-pcl-ros",
-        f"ros-{self.ros_version}-xacro"]
+        return [f"ros-{self.ros_distro}-{self.ros_type}-control",
+        f"ros-{self.ros_distro}-{self.ros_type}-controllers",
+        f"ros-{self.ros_distro}-joint-state-publisher",
+        f"ros-{self.ros_distro}-diagnostic-updater",
+        f"ros-{self.ros_distro}-pcl-ros",
+        f"ros-{self.ros_distro}-xacro"]
     
     def getGazeboDep(self) -> str:
         if self.ros_type == "ros2":
-            return [f"ros-{self.ros_version}-ros-gz-sim",
-            f"ros-{self.ros_version}-gz-ros2-control",
-            f"ros-{self.ros_version}-ros-gz-bridge",
-            f"ros-{self.ros_version}-ros-gz-image"]
+            return [f"ros-{self.ros_distro}-ros-gz-sim",
+            f"ros-{self.ros_distro}-gz-ros2-control",
+            f"ros-{self.ros_distro}-ros-gz-bridge",
+            f"ros-{self.ros_distro}-ros-gz-image"]
         else:
             return ["ros-noetic-gazebo-ros-pkgs", 
                     "ros-noetic-gazebo-ros-control"]

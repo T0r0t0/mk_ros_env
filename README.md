@@ -41,7 +41,7 @@ By default it create a ROS Humble container with a folder /ros_ws
 You can specify a folder to copy in it:
 
 ```bash
-./ros-env.py create --path ./path/to/your/folder/
+./ros-env.py create --volumes ./path/to/your/folder1/ ./path/to/your/folder2
 ```
 
 You can specify the name of the image

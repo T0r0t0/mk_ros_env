@@ -10,7 +10,7 @@ class RosEnvParam:
             "image_name": gen.name,
             "container_name": gen.name,
             "ros": {
-                "distro": gen.ros_version,
+                "distro": gen.ros_distro,
                 "type": gen.ros_type
             },
             "option":{
