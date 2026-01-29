@@ -5,6 +5,7 @@ import argparse
 import os
 import sys
 import yaml
+import pathlib
 from docker_generator import docker_generator
 from docker_tools import docker_tools
 from RosEnvParam import RosEnvParam
@@ -18,7 +19,7 @@ create_parser = command_subparser.add_parser("create", help="Create necessary fi
 create_parser.add_argument("-n", "--name", help="This will be the name of the container. By default is ros-<distro>", required=False)
 create_parser.add_argument("--ros-version",help="Version of ROS. Can be ROS2: humble, galactic, jazzy,... or even ROS1: noetic, melodic, ...\n If not specify the default distros humble", required=False)
 create_parser.add_argument("-g", "--gazebo", help="Add all dependencies for using gzebo in the corresponding version", action="store_true", required=False)
-create_parser.add_argument("-p", "--path", help="Specify a folder to copy with the ros environment. Most of the time is an existing source folder. If not defined an empty folder named 'ros_ws' will be create.", required=False)
+create_parser.add_argument("-v", "--volumes", nargs='+', help="list of folders to copy with the ros environment. Most of the time are existing source folders. If not defined an empty folder named 'ros_ws' will be create.", required=False)
 create_parser.add_argument("-s", "--shared", help="Share the folder created or specify by --path to the container", action="store_true")
 create_parser.add_argument("-e", "--env", help="You can specify a list of environment variables from a .txt file. They will be added to the default environment variable.", required=False)
 create_parser.add_argument("-d", "--dependencies", help="You probably need specific dependencies for your project. Add them with a list in a .txt file.", required=False)
@@ -51,28 +52,29 @@ if __name__=="__main__":
         print(f"You have chosen ROS {args.ros_version} with the following option: ")
         print(f"\tContainer name: {args.name}")
         print(f'\tGazebo : {args.gazebo}')
-        if args.shared: print(f'\tshared folder : {args.path}')
-        else: print(f'\tcopy folder : {args.path}')
+        if args.shared: print(f'\tshared folders: {args.volumes}')
+        else: print(f'\tcopy folders : {args.volumes}')
         print(f'\tenvironment variables : {args.env}')
         print(f'\tDependencies : {args.dependencies}')
 
-        gen=docker_generator(args.name, args.gazebo, args.path, args.shared, args.env, args.dependencies, args.ros_version)
+        gen=docker_generator(args.name, args.gazebo, args.volumes, args.shared, args.env, args.dependencies, args.ros_version)
 
         RosEnvParam.generate(args.param_path, gen)
 
     elif args.command == "create_from":
         print(f"Load param from {args.file}")
-        rosEnv = RosEnvParam.load(args.file)
+        rosEnv = RosEnvParam.load(RosEnvParam.exist(args.file))
 
         gen = docker_generator(rosEnv['image_name'],
                         rosEnv['option']["gazebo"],
-                        rosEnv['option']['volume path'],
+                        rosEnv['option']['volume path list'],
                         rosEnv['option']['volume shared'],
                         rosEnv['option']['additionnal']['Environment']['path'],
                         rosEnv['option']['additionnal']['dependencies']['path'],
                         rosEnv["ros"]['distro'])
 
-        RosEnvParam.generate(args.param_path, gen)
+        param_name = args.param_path if args.param_path != '.ros_env_param.yaml' else pathlib.Path(args.file).name
+        RosEnvParam.generate(param_name, gen)
 
     elif args.command == "delete":
         rosEnv = RosEnvParam.load(args.param_path)
@@ -89,16 +91,20 @@ if __name__=="__main__":
             print("\t.env deleted.")
 
 
-        print("Deleting docker container :")
+        print("Deleting docker container :", end="\n\t")
         if docker_tools.isRunning(rosEnv['container_name']):
-            if docker_tools.stop(rosEnv['container_name']) and docker_tools.rm(rosEnv['container_name']):
-                print("Isolate environment killed.")
+            docker_tools.stop(rosEnv['container_name'])
+            docker_tools.rm(rosEnv['container_name'])
         elif docker_tools.exist(rosEnv['container_name']):
-            if docker_tools.rm(rosEnv['container_name']):
-                print("Isolate environment killed.")
+            docker_tools.rm(rosEnv['container_name'])
+        else:
+            print("Container already killed")
 
-        print("Deleting images:")
-        docker_tools.rmi(rosEnv["image_name"])
+        print("Deleting images:", end="\n\t")
+        if docker_tools.imageExist(rosEnv["image_name"]):
+            docker_tools.rmi(rosEnv["image_name"])
+        else:
+            print("Docker never build.")
         print("Delete completed !")
 
     elif args.command == "build":
@@ -116,13 +122,19 @@ if __name__=="__main__":
             docker_tools.start(rosEnv['container_name'])
 
         else: # Does not exist so we create it 
-            print("Doesn't exist ! Creation ...")
+            print("Doesn't exist ! Creation ... ", end="")
             process = subprocess.Popen("docker compose up -d", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
             # Read the output in real-time
             for line in process.stdout:
                 print(line.strip())
             return_code = process.wait()
+            if return_code != 0:
+                print("Failed")
+                print("return code: ", return_code)
+                print("Error: ", process.stderr)
+            else:
+                print("Done")
 
         #Connect the terminal stream to the docker
         print("Connection to isolate environment ...")

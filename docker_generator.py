@@ -6,14 +6,14 @@ import os
 
 
 class docker_generator():
-    def __init__(self, name:str ,isGazebo:bool, volumes_path: str, isShared:bool, env_path, dependencies_path, ros_version: str):
+    def __init__(self, name:str ,isGazebo:bool, volumes_path_list: list[str], isShared:bool, env_path, dependencies_path, ros_version: str):
         """
             This classe generate all necessary for a ros environment in a container.
     
         :param isGazebo: If you want to use Gazebo for simulation set True. All dependencies necessary will be install.
         :type isGazebo: bool
-        :param volumes_path: The path to a folder you want to copy into the docker.
-        :type volumes: str
+        :param volumes_path_list: List of path to folders you want to copy into the docker.
+        :type volumes: list[str]
         :param isShared: If True the copy folder and the original one will be linked between your account and the docker environement.
         :type isShared: bool
         :param env_path: The path to a .txt file which contain all additionnal envrionment variable you want to set up.
@@ -26,7 +26,7 @@ class docker_generator():
         self.isGazebo=isGazebo
         self.isShared=isShared
 
-        self.isVolumes = volumes_path != None
+        self.isVolumes = volumes_path_list != None
         self.isEnv = env_path != None
         self.isDependencies = dependencies_path != None
 
@@ -61,14 +61,14 @@ class docker_generator():
                 i=0
                 while True:
                     try:
-                        self.volumes_path = "./ros_ws" if i==0 else f"./ros_ws_{i}"
-                        os.mkdir(self.volumes_path)
+                        self.volumes_path_list = [f"./{self.ros_type}_ws"] if i==0 else [f"./{self.ros_type}_ws_{i}"]
+                        os.mkdir(self.volumes_path_list[0]) # No path were given so we add into the list only one element that why we czn use [0]
                         break
                     except FileExistsError as e:
                         i+=1
                         continue
         elif self.isVolumes:
-            self.volumes_path = volumes_path
+            self.volumes_path_list = volumes_path_list
 
         # Check environment
         if self.isEnv:
@@ -164,21 +164,22 @@ class docker_generator():
             Dockerfile.write("RUN usermod -a -G video $USER\n")
             Dockerfile.write("USER $USER\n")
 
-            if self.isGazebo and self.ros_type == "ros2":
-                    Dockerfile.write("# Add the source command to .bashrc\n")
-                    Dockerfile.write("RUN echo 'export PATH=$PATH:/Dynamic_World_Generator/code/' >> /home/${USER}/.bashrc\n")
-
             Dockerfile.write("\n# Add the source command to .bashrc\n")
             Dockerfile.write(f"RUN echo 'source /opt/ros/{self.ros_version}"+"/setup.sh' >> /home/${USER}/.bashrc\n")
+
+            if self.isGazebo and self.ros_type == "ros2":
+                    Dockerfile.write("RUN echo 'export PATH=$PATH:/Dynamic_World_Generator/code/' >> /home/${USER}/.bashrc\n")
             
             if self.isVolumes:
-                Dockerfile.write("\n# Copy your workspace into the container\n")
-                Dockerfile.write(f"COPY {self.volumes_path} /{self.ros_type}_ws\n")
+                Dockerfile.write("\n# Copy your workspace into the home container\n")
+                for volume in self.volumes_path_list:
+                    volume = pathlib.Path(volume)
+                    Dockerfile.write(f"COPY ./{volume.resolve().relative_to(pathlib.Path.cwd())} /home/${{USER}}/{volume.name}\n")
             else:
                 Dockerfile.write("\n# Create your workspace into the container\n")
-                Dockerfile.write(f"RUN mkdir /{self.ros_type}_ws\n")
+                Dockerfile.write(f"RUN mkdir /home/${{USER}}/{self.ros_type}_ws\n")
 
-            Dockerfile.write(f"WORKDIR /{self.ros_type}_ws\n")
+            Dockerfile.write(f"WORKDIR /home/${{USER}}/\n")
 
     def generate_env_file(self) -> None:
         """
@@ -204,34 +205,40 @@ class docker_generator():
                 env_file.write(f"\n{self.env}")
 
     def generate_docker_compose(self) -> None:
+        data = {
+            "version": '3.8',
+            "services":{
+                "gz_test":{
+                    "container_name": self.name,
+                    "image": self.name,
+                    "build": {
+                        "context": ".",
+                        "dockerfile": "Dockerfile",
+                        "args": {
+                            "UID": "${UID}",
+                            "GID": "${GID}",
+                            "USER": "${USER}",
+                            "GROUP": "${GROUP}"
+                        }
+                    },
+                    "env_file": [".env"],
 
-        with open("./docker-compose.yaml", mode="w") as docker_compose:
-            # Nota: docker-compose.yaml doesn't support \t but double space
-            docker_compose.write("version: '3'\n\nservices:\n")
+                    "volumes": ["/tmp/.X11-unix:/tmp/.X11-unix"],
+                    "stdin_open": True,
+                    "tty": True
+                }
+            }
+        }
 
-            docker_compose.write("  gz_test:\n")
-            docker_compose.write(f"    container_name: {self.name}\n")
-            docker_compose.write(f"    image: {self.name}\n")
-            docker_compose.write("    build:\n"
-                                 "      context: .\n"
-                                 "      dockerfile: Dockerfile\n"
-                                 "      args:\n")
-            
-            docker_compose.write("        UID: ${UID}\n")
-            docker_compose.write("        GID: ${GID}\n")
-            docker_compose.write("        USER: ${USER}\n")
-            docker_compose.write("        GROUP: ${GROUP}\n")
-            docker_compose.write(f"    env_file:\n"
-                                 "      - .env\n")
+        if self.isShared:
+            for volume in self.volumes_path_list:
+                volume = pathlib.Path(volume)
+                data["services"]["gz_test"]["volumes"].append(f"./{volume.resolve().relative_to(pathlib.Path.cwd())}:/home/${{USER}}/{volume.name}")
 
-            docker_compose.write("    volumes:\n")
-            docker_compose.write("      - /tmp/.X11-unix:/tmp/.X11-unix\n")
+                # Write the dictionary to a YAML file
+        with open("docker-compose.yaml", "w") as file:
+            yaml.dump(data, file, sort_keys=False)
 
-            if self.isShared:
-                    docker_compose.write(f"      - {self.volumes_path}:/ros_ws  # Link the local volumes '{self.volumes_path}' to '/ros_ws' in the container\n")
-            
-            docker_compose.write("    stdin_open: true  #keep the container open for terminal\n")
-            docker_compose.write("    tty: true         # Activate terminalversion mode: '3.8'\n")
 
     
             

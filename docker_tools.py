@@ -12,10 +12,17 @@ class docker_tools:
     def exist(name: str) -> bool:
         # Check if it exist
         result = subprocess.run(f"docker ps -a | grep {name}", shell=True, capture_output=True, text=True)
-        if result.stdout != "": # Exist so we start it
+        if result.stdout != "":
             return True
         return False
     
+    def imageExist(name: str) -> bool:
+        # Check if it exist
+        result = subprocess.run(f"docker images | grep {name}", shell=True, capture_output=True, text=True)
+        if result.stdout != "":
+            return True
+        return False
+
     def stop(name: str) -> bool:
         print(f"Stopping docker {name} ... ", end="")
         if executeSubProcess(f"docker stop {name}") == 0:

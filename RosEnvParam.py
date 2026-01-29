@@ -16,7 +16,7 @@ class RosEnvParam:
             "option":{
                 "gazebo": gen.isGazebo,
                 "volume shared": gen.isShared,
-                "volume path": gen.volumes_path,
+                "volume path list": gen.volumes_path_list,
                 "additionnal":{
                     "dependencies":{
                         "status": gen.isDependencies,
@@ -37,7 +37,7 @@ class RosEnvParam:
 
     def exist(path: str) -> pathlib.Path:
         target = pathlib.Path(path)
-        if target.is_file() and path.suffix == ".yaml":
+        if target.is_file() and target.suffix == ".yaml":
             return target  
         raise FileExistsError(f"This path {path} doesn't lead to a .txt file.")
 
