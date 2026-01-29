@@ -79,9 +79,9 @@ if __name__=="__main__":
                         rosEnv['option']["gazebo"],
                         rosEnv['option']['volume path list'],
                         rosEnv['option']['volume shared'],
-                        rosEnv['option']['additionnal']['environment']['path'],
-                        rosEnv['option']['additionnal']['dependencies']['path'],
-                        rosEnv["ros"]['distro'])
+                        env_content = rosEnv['option']['additionnal']['environment']['content'],
+                        dep_content = rosEnv['option']['additionnal']['dependencies']['content'],
+                        ros_distro = rosEnv["ros"]['distro'])
 
         param_name = args.param_path if args.param_path != '.ros_env_param.yaml' else pathlib.Path(args.file).name
         RosEnvParam.generate(param_name, gen)

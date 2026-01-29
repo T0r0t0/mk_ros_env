@@ -20,11 +20,11 @@ class RosEnvParam:
                 "additionnal":{
                     "dependencies":{
                         "status": gen.isDependencies,
-                        "path": gen.dependencies_path if gen.isDependencies else None
+                        "content": gen.dependencies if gen.isDependencies else None
                     },
                     "environment":{
                         "status":gen.isEnv,
-                        "path": gen.env_path if gen.isEnv else None
+                        "content":gen.env if gen.isEnv else None
                     }
                 }
             }

@@ -6,7 +6,7 @@ import os
 
 
 class docker_generator():
-    def __init__(self, name:str, iname:str,isGazebo:bool, volumes_path_list: list[str], isShared:bool, env_path, dependencies_path, ros_distro: str):
+    def __init__(self, name:str, iname:str,isGazebo:bool, volumes_path_list: list[str], isShared:bool, env_path=None, dependencies_path=None, ros_distro=None, env_content=None, dep_content=None):
         """
             This classe generate all necessary for a ros environment in a container.
     
@@ -27,9 +27,6 @@ class docker_generator():
         self.isGazebo=isGazebo
         self.isShared=isShared
 
-        self.isVolumes = volumes_path_list != None
-        self.isEnv = env_path != None
-        self.isDependencies = dependencies_path != None
 
         print("Checking for ROS version ...",)
         # URL of the ROS distribution index
@@ -51,12 +48,13 @@ class docker_generator():
         # Get the type of the distro
         self.ros_type = "ros2" if data['distributions'][self.ros_distro]['distribution_type'] == "ros2" else "ros"
         print(f"Distribution info :\n\tName: {self.ros_distro}\n\tType: {self.ros_type}")
-        if self.ros_type = "ros":
+        if self.ros_type == "ros":
             print(f"ROS 1 distribution are not fully tested. Sorry for that -_-")
 
-        
         print("ROS version checked!")
+
         # Check volumes
+        self.isVolumes = volumes_path_list != None
         if self.isShared and not self.isVolumes:
                 print("Shared parameters is True but no Volumes path was given. A default folder will be created and shared.")
                 self.isVolumes = True
@@ -74,9 +72,10 @@ class docker_generator():
             self.volumes_path_list = volumes_path_list
 
         # Check environment
-        if self.isEnv:
+        if env_path != None:
+            self.isEnv = True
             print("Checking for environment Path ... ", end="")
-            self.env_path = pathlib.Path(env_path)
+            self.env_path = pathlib.Path(env_path).resolve().relative_to(pathlib.Path.cwd()) 
             if not(isTXT(self.env_path)):
                 raise FileNotFoundError("This file is weird. Please specify the path to a .txt file.")
             print("Done")
@@ -85,10 +84,17 @@ class docker_generator():
             self.env = self.load(self.env_path)
             print("Done")
 
+        elif env_content != None:
+            self.isEnv = True
+            self.env = env_content
+        else:
+            self.isEnv = False 
+
         #Check dependencies
-        if self.isDependencies:
+        if dependencies_path != None:
+            self.isDependencies = True
             print("Checking for dependencies Path ... ", end="")
-            self.dependencies_path = pathlib.Path(dependencies_path)
+            self.dependencies_path = pathlib.Path(dependencies_path).resolve().relative_to(pathlib.Path.cwd()) 
             if not(isTXT(self.dependencies_path)):
                 raise FileNotFoundError("This file is weird. Please specify the path to a .txt file.")
             print("Done")
@@ -96,6 +102,12 @@ class docker_generator():
             print("Loading dependencies ... ", end="")
             self.dependencies = self.parseDependenciesString(self.load(self.dependencies_path))
             print("Done")
+        
+        elif dep_content != None:
+            self.isDependencies = True
+            self.dependencies = dep_content
+        else: 
+            self.isDependencies = False
             
         # Generate Dockerfile
         print("Generating Dockerfile ... ", end="")
