@@ -7,7 +7,7 @@ class RosEnvParam:
     def generate(name:str, gen: docker_generator) -> None:
         # Define your data as a Python dictionary
         data = {
-            "image_name": gen.name,
+            "image_name": gen.iname,
             "container_name": gen.name,
             "ros": {
                 "distro": gen.ros_distro,
@@ -22,7 +22,7 @@ class RosEnvParam:
                         "status": gen.isDependencies,
                         "path": gen.dependencies_path if gen.isDependencies else None
                     },
-                    "Environment":{
+                    "environment":{
                         "status":gen.isEnv,
                         "path": gen.env_path if gen.isEnv else None
                     }

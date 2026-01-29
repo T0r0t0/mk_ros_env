@@ -6,7 +6,7 @@ import os
 
 
 class docker_generator():
-    def __init__(self, name:str ,isGazebo:bool, volumes_path_list: list[str], isShared:bool, env_path, dependencies_path, ros_distro: str):
+    def __init__(self, name:str, iname:str,isGazebo:bool, volumes_path_list: list[str], isShared:bool, env_path, dependencies_path, ros_distro: str):
         """
             This classe generate all necessary for a ros environment in a container.
     
@@ -23,6 +23,7 @@ class docker_generator():
         """
         self.ros_distro=ros_distro if ros_distro!=None else "humble"
         self.name=name if name!=None else "ros-"+self.ros_distro
+        self.iname=iname if iname != None else self.name
         self.isGazebo=isGazebo
         self.isShared=isShared
 

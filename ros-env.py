@@ -17,6 +17,7 @@ command_subparser = parser.add_subparsers(dest="command", help="Available comman
 create_parser = command_subparser.add_parser("create", help="Create necessary file for ros environment in docker")
 
 create_parser.add_argument("-n", "--name", help="This will be the name of the container. By default is ros-<distro>", required=False)
+create_parser.add_argument("-i", "--iname", help="This will be the name of the image. By default take --name value", required=False)
 create_parser.add_argument("--ros-distro",help="Version of ROS. Can be ROS2: humble, galactic, jazzy,... or even ROS1: noetic, melodic, ...\n If not specify the default distros humble", required=False)
 create_parser.add_argument("-g", "--gazebo", help="Add all dependencies for using gzebo in the corresponding version", action="store_true", required=False)
 create_parser.add_argument("-v", "--volumes", nargs='+', help="list of folders to copy with the ros environment. Most of the time are existing source folders. If not defined an empty folder named 'ros_ws' will be create.", required=False)
@@ -49,15 +50,23 @@ if __name__=="__main__":
     args = parser.parse_args()
 
     if args.command == "create":
-        print(f"You have chosen ROS {args.ros_distro} with the following option: ")
+        print(f"You have chosen {"Ros "+args.ros_distro if args.ros_distro != None else "the default ROS distro"} with the following option: ")
         print(f"\tContainer name: {args.name}")
+        print(f"\tImage name: {args.iname}")
         print(f'\tGazebo : {args.gazebo}')
         if args.shared: print(f'\tshared folders: {args.volumes}')
         else: print(f'\tcopy folders : {args.volumes}')
         print(f'\tenvironment variables : {args.env}')
         print(f'\tDependencies : {args.dependencies}')
 
-        gen=docker_generator(args.name, args.gazebo, args.volumes, args.shared, args.env, args.dependencies, args.ros_distro)
+        gen=docker_generator(args.name,
+                            args.iname,
+                            args.gazebo,
+                            args.volumes,
+                            args.shared,
+                            args.env, 
+                            args.dependencies,
+                            args.ros_distro)
 
         RosEnvParam.generate(args.param_path, gen)
 
@@ -65,11 +74,12 @@ if __name__=="__main__":
         print(f"Load param from {args.file}")
         rosEnv = RosEnvParam.load(RosEnvParam.exist(args.file))
 
-        gen = docker_generator(rosEnv['image_name'],
+        gen = docker_generator(rosEnv['container_name'],
+                        rosEnv['image_name'],
                         rosEnv['option']["gazebo"],
                         rosEnv['option']['volume path list'],
                         rosEnv['option']['volume shared'],
-                        rosEnv['option']['additionnal']['Environment']['path'],
+                        rosEnv['option']['additionnal']['environment']['path'],
                         rosEnv['option']['additionnal']['dependencies']['path'],
                         rosEnv["ros"]['distro'])
 
