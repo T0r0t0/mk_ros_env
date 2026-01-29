@@ -51,6 +51,8 @@ class docker_generator():
         # Get the type of the distro
         self.ros_type = "ros2" if data['distributions'][self.ros_distro]['distribution_type'] == "ros2" else "ros"
         print(f"Distribution info :\n\tName: {self.ros_distro}\n\tType: {self.ros_type}")
+        if self.ros_type = "ros":
+            print(f"ROS 1 distribution are not fully tested. Sorry for that -_-")
 
         
         print("ROS version checked!")
